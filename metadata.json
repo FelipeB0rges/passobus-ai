@@ -1,0 +1,5 @@
+{
+  "name": "PassoBus AI",
+  "description": "An AI-driven dynamic public transport simulation for Passo Fundo, RS. Optimizes routes in real-time based on passenger demand.",
+  "requestFramePermissions": []
+}
