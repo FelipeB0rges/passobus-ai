@@ -16,6 +16,7 @@ interface MapVisualizationProps {
   selectedDestId?: string | null;
   focusOnBusId?: string | null;
   autoFollow?: boolean;
+  focusMode?: boolean; // Quando true, esconde outros ônibus e foca apenas no selecionado
 }
 
 // Ícone do Ônibus - moderno e delicado
@@ -136,13 +137,13 @@ const getBusStopIconHtml = (
     `;
   }
 
-  // Terminal - maior, com ícone de ônibus
+  // Terminal - maior, azul escuro com ícone de ônibus
   if (type === 'terminal') {
     const badgeHtml = waitingCount > 0 ? `
       <div style="
         position: absolute;
-        top: -4px;
-        right: -4px;
+        top: -5px;
+        right: -5px;
         background: #ef4444;
         color: white;
         font-size: 10px;
@@ -154,24 +155,27 @@ const getBusStopIconHtml = (
         align-items: center;
         justify-content: center;
         border: 2px solid white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
       ">${waitingCount}</div>
     ` : '';
 
     return `
-      <div style="position: relative; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
+      <div style="position: relative; filter: drop-shadow(0 2px 6px rgba(37,99,235,0.4));">
         <div style="
-          background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 2px solid white;
+          border: 2.5px solid white;
+          box-shadow: 0 2px 8px rgba(37,99,235,0.3);
         ">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/>
-            <rect x="2" y="3" width="20" height="16" rx="2"/>
+            <path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H6c-1.1 0-2.1.8-2.4 1.8l-1.4 5c-.1.4-.2.8-.2 1.2 0 .4.1.8.2 1.2.3 1.1.8 2.8.8 2.8h3"/>
+            <circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>
           </svg>
         </div>
         ${badgeHtml}
@@ -179,7 +183,7 @@ const getBusStopIconHtml = (
     `;
   }
 
-  // Parada normal - ícone de parada de ônibus (bus-stop-pointer)
+  // Parada normal - ícone de parada de ônibus todo azul
   const badgeHtml = waitingCount > 0 ? `
     <div style="
       position: absolute;
@@ -196,18 +200,19 @@ const getBusStopIconHtml = (
       align-items: center;
       justify-content: center;
       border: 2px solid white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
       z-index: 10;
     ">${waitingCount}</div>
   ` : '';
 
   return `
-    <div style="position: relative; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
-      <svg width="32" height="32" viewBox="0 0 51.787 51.787" fill="#3b82f6" xmlns="http://www.w3.org/2000/svg">
-        <path d="M25.892,0c-7.646,0-13.845,6.198-13.845,13.845c0,1.494,0.244,2.929,0.68,4.274c0.981,3.461,12.292,33.668,12.292,33.668
+    <div style="position: relative; filter: drop-shadow(0 2px 4px rgba(37,99,235,0.4));">
+      <svg width="28" height="28" viewBox="0 0 51.787 51.787" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#2563eb" d="M25.892,0c-7.646,0-13.845,6.198-13.845,13.845c0,1.494,0.244,2.929,0.68,4.274c0.981,3.461,12.292,33.668,12.292,33.668
           s12.014-27.703,13.83-33.096c0.565-1.511,0.891-3.14,0.891-4.848C39.738,6.199,33.539,0,25.892,0z M25.892,24.761
           c-6,0-10.865-4.867-10.865-10.865c0-6.003,4.865-10.868,10.865-10.868c6.003,0,10.866,4.865,10.866,10.868
           C36.758,19.894,31.895,24.761,25.892,24.761z"/>
-        <path fill="#1e293b" d="M30.511,6.326h-9.237c-0.948,0-1.72,0.835-1.72,1.866v10.039c0,0.685,0.341,1.28,0.848,1.604v1.073
+        <path fill="#1d4ed8" d="M30.511,6.326h-9.237c-0.948,0-1.72,0.835-1.72,1.866v10.039c0,0.685,0.341,1.28,0.848,1.604v1.073
           c0,0.353,0.567,0.636,1.271,0.636c0.701,0,1.271-0.283,1.271-0.636v-0.812H24.5v-0.001h3.217v0.001h1.195v0.812
           c0,0.353,0.568,0.636,1.271,0.636s1.271-0.283,1.271-0.636v-1.116c0.471-0.334,0.78-0.907,0.78-1.562V8.191
           C32.232,7.162,31.461,6.326,30.511,6.326z M23.22,7.121h5.344V7.64H23.22V7.121z M24.291,17.061h-3.373v-1.248h3.373V17.061z
@@ -228,6 +233,7 @@ const MapVisualization = forwardRef<MapHandle, MapVisualizationProps>(({
   selectedDestId,
   focusOnBusId,
   autoFollow = true,
+  focusMode = false,
 }, ref) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -288,11 +294,12 @@ const MapVisualization = forwardRef<MapHandle, MapVisualizationProps>(({
 
       // Paradas
       BUS_STOPS.forEach((stop) => {
+        const size = stop.type === 'terminal' ? 36 : 28;
         const icon = L.divIcon({
           className: 'stop-icon',
           html: getBusStopIconHtml(stop.type, false, false, 0),
-          iconSize: stop.type === 'terminal' ? [32, 32] : [20, 20],
-          iconAnchor: stop.type === 'terminal' ? [16, 16] : [10, 10],
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size],  // Ancora na ponta do pin
         });
 
         const marker = L.marker([stop.lat, stop.lng], { icon }).addTo(map);
@@ -323,21 +330,29 @@ const MapVisualization = forwardRef<MapHandle, MapVisualizationProps>(({
         const isOrigin = stop.id === selectedOriginId;
         const isDest = stop.id === selectedDestId;
         const isSelected = isOrigin || isDest;
-        const waitingCount = getWaitingCountAtStop(stop.lat, stop.lng);
 
-        const size = isSelected ? 44 : stop.type === 'terminal' ? 32 : 20;
+        // Em focusMode, só mostra origem e destino
+        if (focusMode && !isSelected) {
+          marker.setOpacity(0.3);
+          marker.setZIndexOffset(0);
+          return;
+        }
+
+        const waitingCount = focusMode ? 0 : getWaitingCountAtStop(stop.lat, stop.lng);
+        const size = isSelected ? 44 : stop.type === 'terminal' ? 36 : 28;
 
         const icon = L.divIcon({
           className: 'stop-icon',
           html: getBusStopIconHtml(stop.type, isOrigin, isDest, waitingCount),
           iconSize: [size, size + (isSelected ? 16 : 0)],
-          iconAnchor: [size / 2, size / 2],
+          iconAnchor: [size / 2, isSelected ? size / 2 : size],
         });
         marker.setIcon(icon);
+        marker.setOpacity(1);
         marker.setZIndexOffset(isSelected ? 2000 : waitingCount > 0 ? 1000 : 0);
       }
     });
-  }, [selectedOriginId, selectedDestId, passengers]);
+  }, [selectedOriginId, selectedDestId, passengers, focusMode]);
 
   // Foco no ônibus
   useEffect(() => {
@@ -358,6 +373,8 @@ const MapVisualization = forwardRef<MapHandle, MapVisualizationProps>(({
 
     buses.forEach((bus) => {
       const hasPassenger = bus.passengersOnBoard.length > 0 || bus.state === BusState.GOING_TO_PICKUP;
+      const isFocusedBus = focusOnBusId === bus.id;
+      const shouldShow = !focusMode || isFocusedBus;
 
       if (!busMarkersRef.current[bus.id]) {
         const icon = L.divIcon({
@@ -368,8 +385,11 @@ const MapVisualization = forwardRef<MapHandle, MapVisualizationProps>(({
         });
         const marker = L.marker([bus.location.lat, bus.location.lng], { icon }).addTo(map);
         busMarkersRef.current[bus.id] = marker;
-      } else {
-        const marker = busMarkersRef.current[bus.id];
+      }
+
+      const marker = busMarkersRef.current[bus.id];
+
+      if (shouldShow) {
         marker.setLatLng([bus.location.lat, bus.location.lng]);
         const icon = L.divIcon({
           className: 'custom-bus-icon',
@@ -378,31 +398,39 @@ const MapVisualization = forwardRef<MapHandle, MapVisualizationProps>(({
           iconAnchor: [21, 21],
         });
         marker.setIcon(icon);
-        marker.setZIndexOffset(3000);
+        marker.setZIndexOffset(isFocusedBus ? 5000 : 3000);
+        marker.setOpacity(1);
+      } else {
+        // Esconde ônibus que não é o focado
+        marker.setOpacity(0);
       }
 
-      // Rotas
-      if (bus.path.length > 1) {
+      // Rotas - só mostra do ônibus focado em focusMode
+      if (bus.path.length > 1 && shouldShow) {
         const latlngs = bus.path.map((c) => [c.lat, c.lng] as [number, number]);
 
         if (!routeLinesRef.current[bus.id]) {
           const polyline = L.polyline(latlngs, {
             color: bus.color,
-            weight: 5,
-            opacity: 0.7,
+            weight: isFocusedBus ? 6 : 5,
+            opacity: isFocusedBus ? 0.9 : 0.7,
             lineJoin: 'round',
             lineCap: 'round',
           }).addTo(map);
           routeLinesRef.current[bus.id] = polyline;
         } else {
           routeLinesRef.current[bus.id].setLatLngs(latlngs);
+          routeLinesRef.current[bus.id].setStyle({
+            weight: isFocusedBus ? 6 : 5,
+            opacity: isFocusedBus ? 0.9 : 0.7,
+          });
         }
       } else if (routeLinesRef.current[bus.id]) {
         routeLinesRef.current[bus.id].remove();
         delete routeLinesRef.current[bus.id];
       }
     });
-  }, [buses]);
+  }, [buses, focusMode, focusOnBusId]);
 
   return (
     <div className="w-full h-full relative">

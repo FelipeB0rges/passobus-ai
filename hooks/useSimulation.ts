@@ -1,16 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Bus, Passenger, BusState, PassengerStatus } from '../types';
+import { Bus, Passenger, BusState, PassengerStatus, SimulationConfig } from '../types';
 import { createAssignmentWithRoutes } from '../services/assignmentService';
 import { getNextState, isBusMoving, isBusAvailable } from '../services/busStateMachine';
 import { getStreetRoute } from '../services/routingService';
-import { BUS_SPEED, BUS_STOPS } from '../constants';
+import { BUS_SPEED, BUS_STOPS, DEFAULT_SIMULATION_CONFIG, BUS_TEMPLATES, WEIGHTED_BUS_STOPS } from '../constants';
 
 interface SimulationState {
   buses: Bus[];
   passengers: Passenger[];
 }
 
-export function useSimulation(initialBuses: Bus[], initialPassengers: Passenger[]) {
+export function useSimulation(
+  initialBuses: Bus[],
+  initialPassengers: Passenger[],
+  config: SimulationConfig = DEFAULT_SIMULATION_CONFIG
+) {
   const [state, setState] = useState<SimulationState>({
     buses: initialBuses,
     passengers: initialPassengers,
@@ -18,6 +22,7 @@ export function useSimulation(initialBuses: Bus[], initialPassengers: Passenger[
 
   // Refs para evitar closures stale
   const stateRef = useRef(state);
+  const configRef = useRef(config);
   const processingRef = useRef<Set<string>>(new Set());
   const busProcessingRef = useRef<Set<string>>(new Set());
 
@@ -25,9 +30,17 @@ export function useSimulation(initialBuses: Bus[], initialPassengers: Passenger[
     stateRef.current = state;
   }, [state]);
 
+  // Atualiza ref da config
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
+
   // Processa atribuições - roda frequentemente
   useEffect(() => {
     const processAssignments = async () => {
+      // Pula se pausado
+      if (configRef.current.isPaused) return;
+
       const { buses, passengers } = stateRef.current;
 
       // Ônibus disponíveis
@@ -163,6 +176,9 @@ export function useSimulation(initialBuses: Bus[], initialPassengers: Passenger[
 
   useEffect(() => {
     const startCruising = async () => {
+      // Pula se pausado
+      if (configRef.current.isPaused) return;
+
       const { buses, passengers } = stateRef.current;
 
       for (const bus of buses) {
@@ -218,9 +234,16 @@ export function useSimulation(initialBuses: Bus[], initialPassengers: Passenger[
     let animationFrameId: number;
 
     const gameLoop = () => {
+      // Se pausado, continua o loop mas não processa
+      if (configRef.current.isPaused) {
+        animationFrameId = requestAnimationFrame(gameLoop);
+        return;
+      }
+
       setState((prevState) => {
         const now = Date.now();
         let { buses, passengers } = prevState;
+        const speedMultiplier = configRef.current.speedMultiplier;
 
         // MÁQUINA DE ESTADOS
         buses = buses.map((bus) => {
@@ -288,7 +311,9 @@ export function useSimulation(initialBuses: Bus[], initialPassengers: Passenger[
           return bus;
         });
 
-        // MOVIMENTO
+        // MOVIMENTO (com multiplicador de velocidade)
+        const effectiveSpeed = BUS_SPEED * speedMultiplier;
+
         buses = buses.map((bus) => {
           if (!isBusMoving(bus.state) || bus.path.length < 2) return bus;
 
@@ -297,11 +322,11 @@ export function useSimulation(initialBuses: Bus[], initialPassengers: Passenger[
           const dy = nextPoint.lat - bus.location.lat;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance < BUS_SPEED) {
+          if (distance < effectiveSpeed) {
             return { ...bus, location: nextPoint, path: bus.path.slice(1) };
           }
 
-          const ratio = BUS_SPEED / distance;
+          const ratio = effectiveSpeed / distance;
           return {
             ...bus,
             location: {
@@ -409,6 +434,92 @@ export function useSimulation(initialBuses: Bus[], initialPassengers: Passenger[
     }));
   }, []);
 
+  // Adiciona um novo onibus a frota
+  const addBus = useCallback(() => {
+    setState((s) => {
+      const newIndex = s.buses.length;
+      const template = BUS_TEMPLATES[newIndex % BUS_TEMPLATES.length];
+      const stop = WEIGHTED_BUS_STOPS[newIndex % WEIGHTED_BUS_STOPS.length];
+
+      const newBus: Bus = {
+        id: `bus-${Date.now()}-${newIndex}`,
+        name: `${template.namePrefix} ${newIndex + 1}`,
+        location: { lat: stop.lat, lng: stop.lng },
+        capacity: template.capacity,
+        color: template.color,
+        path: [],
+        state: BusState.AVAILABLE,
+        stateStartTime: Date.now(),
+        assignment: null,
+        passengersOnBoard: [],
+      };
+
+      return { ...s, buses: [...s.buses, newBus] };
+    });
+  }, []);
+
+  // Remove um onibus ocioso da frota (economia)
+  const removeBus = useCallback(() => {
+    setState((s) => {
+      // Encontra um onibus AVAILABLE ou CRUISING sem assignment para remover
+      const idleBusIndex = s.buses.findIndex(
+        (b) => (b.state === BusState.AVAILABLE || b.state === BusState.CRUISING) &&
+               !b.assignment &&
+               b.passengersOnBoard.length === 0
+      );
+
+      if (idleBusIndex === -1) return s; // Nenhum onibus ocioso
+
+      const newBuses = s.buses.filter((_, i) => i !== idleBusIndex);
+      return { ...s, buses: newBuses };
+    });
+  }, []);
+
+  // Ajusta a frota para o tamanho desejado
+  const setFleetSize = useCallback((targetSize: number) => {
+    setState((s) => {
+      const currentSize = s.buses.length;
+      if (targetSize === currentSize) return s;
+
+      if (targetSize > currentSize) {
+        // Adicionar onibus
+        const newBuses: Bus[] = [];
+        for (let i = currentSize; i < targetSize; i++) {
+          const template = BUS_TEMPLATES[i % BUS_TEMPLATES.length];
+          const stop = WEIGHTED_BUS_STOPS[i % WEIGHTED_BUS_STOPS.length];
+
+          newBuses.push({
+            id: `bus-${Date.now()}-${i}`,
+            name: `${template.namePrefix} ${i + 1}`,
+            location: { lat: stop.lat, lng: stop.lng },
+            capacity: template.capacity,
+            color: template.color,
+            path: [],
+            state: BusState.AVAILABLE,
+            stateStartTime: Date.now(),
+            assignment: null,
+            passengersOnBoard: [],
+          });
+        }
+        return { ...s, buses: [...s.buses, ...newBuses] };
+      } else {
+        // Remover onibus ociosos
+        const toRemove = currentSize - targetSize;
+        let removed = 0;
+        const newBuses = s.buses.filter((b) => {
+          if (removed >= toRemove) return true;
+          if ((b.state === BusState.AVAILABLE || b.state === BusState.CRUISING) &&
+              !b.assignment && b.passengersOnBoard.length === 0) {
+            removed++;
+            return false;
+          }
+          return true;
+        });
+        return { ...s, buses: newBuses };
+      }
+    });
+  }, []);
+
   return {
     buses: state.buses,
     passengers: state.passengers,
@@ -416,5 +527,8 @@ export function useSimulation(initialBuses: Bus[], initialPassengers: Passenger[
     requestBusForUser,
     cancelPassenger,
     cleanupCompletedBots,
+    addBus,
+    removeBus,
+    setFleetSize,
   };
 }
